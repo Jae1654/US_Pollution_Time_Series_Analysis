@@ -33,7 +33,7 @@ order_spec = sort(periodo$spec,decreasing = TRUE)
 
 # Get the frequency that gives max magnitude
 first_max_index = which.max(periodo$spec)
-first_maximizing_freq = periodo$freq[max_index]
+first_maximizing_freq = periodo$freq[first_max_index]
 
 # Get the frequency that gives second max magnitude
 second_max = order_spec[2]
