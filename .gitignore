@@ -37,3 +37,4 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+pollution_us_2000_2016.csv

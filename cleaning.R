@@ -1,6 +1,8 @@
 
-# unzip uspollution.zip and move pollution_us_2000_2016.csv to the folder that
-# this script is located in before running this script.
+# before running this script, 1. unzip uspollution.zip and move
+# pollution_us_2000_2016.csv to the folder that this script is located in, and
+# then 2. go to Session at the top menu, and do Set Working Directory >
+# To Source File Location
 
 library(tidyverse)
 library(lubridate)
