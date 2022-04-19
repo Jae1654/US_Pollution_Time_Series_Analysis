@@ -1,6 +1,6 @@
 
 # unzip uspollution.zip and move pollution_us_2000_2016.csv to the folder that
-# this script is located in before running this script
+# this script is located in before running this script.
 
 library(tidyverse)
 library(lubridate)
@@ -19,3 +19,8 @@ phoenix <- pollution %>%
             so2 = mean(`SO2 Mean`),
             co = mean(`CO Mean`)) %>%
   ungroup()
+
+# we can choose either the NO2, O3, SO2, or CO column as our time-series.
+# however we should stick to O3 since that's what Jae's code uses as well.
+# please indicate in your model whether you are looking at the entire series or
+# just a subset.
