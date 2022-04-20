@@ -1,0 +1,150 @@
+---
+title: "153_project"
+output: html_document
+date: '2022-04-05'
+---
+
+```{r}
+library(tidyverse)
+library(TSA)
+library(forecast)
+library(astsa)
+source('cleaning.R')
+
+```
+
+# Data Preprocessing
+ - Get the index of the last day of the each year
+```{r}
+phoenix = phoenix %>% mutate(date = paste(year,paste(month,day,sep = "-"),sep = "-"))
+years = seq(2000,2010,1)
+year_index = c()
+for (year in years){
+  year_index = c(year_index,which(phoenix$date == paste(year,sep = "-", "12-31")))
+}
+
+phoenix[year_index,]
+```
+```{r}
+paste("1",sep = "-","1")
+```
+
+
+# Original data
+```{r}
+ozone <- phoenix$o3[1:row_index_2010_12_31]
+
+plot(ozone,type ="l")
+acf(ozone)
+pacf(ozone)
+```
+The original data have clear sign of seasonality, but there seems to be no trend.
+# First difference
+```{r}
+diff_ozone= diff(ozone)
+plot(diff_ozone,type= "l")
+acf(diff_ozone)
+pacf(diff_ozone)
+```
+The ACF of the first differenced data shows that there exists seasonality. Also, we can observe high autocorrelations at lag 1,2, and 3 it is reasonable to take the difference of order 3 or possibly 4. 
+# Higer order difference
+```{r}
+diff_3_ozone= diff(diff(diff(ozone)))
+diff_4_ozone = diff(diff(diff(diff(ozone))))
+plot(diff_3_ozone,type = "l")
+acf(diff_3_ozone)
+pacf(diff_3_ozone)
+
+plot(diff_4_ozone,type = "l")
+acf(diff_4_ozone)
+pacf(diff_4_ozone)
+```
+The ACF plot has some seasonality and pacf plot shows the sign of MA process
+ - possible fitting: MA process, sinusoidal fitting
+
+# thrice difference + sinusoidal fitting
+```{r}
+# Check the periodogram
+periodo = periodogram(diff_4_ozone,plot=TRUE,ylab="Periodogram", xlab="Frequency")
+# has two peaks and many leakage
+
+# Get the high magnitudes in descending order
+order_spec = sort(periodo$spec,decreasing = TRUE)
+
+# Get the frequency that gives max magnitude
+first_max = order_spec[1]
+first_maximizing_freq = periodo$freq[periodo$spec==first_max]
+
+# Get the frequency that gives second max magnitude
+second_max = order_spec[2]
+second_maximizing_freq = periodo$freq[periodo$spec==second_max]
+
+t = 1:length(diff_4_ozone)
+
+first_sin_max = sin(2*pi*first_maximizing_freq*t)
+first_cos_max = cos(2*pi*first_maximizing_freq*t)
+second_cos_max = cos(2*pi*second_maximizing_freq*t)
+second_sin_max = cos(2*pi*second_maximizing_freq*t)
+
+# Max Seasonal fitting
+ozone_sinusoid_model = lm(diff_4_ozone ~ t+ first_sin_max+first_cos_max)
+
+# Get the residual, hoping for removing seasonality
+ozone_sinusoid_residual=ozone_sinusoid_model$residuals
+plot(ozone_sinusoid_residual,type = "l") # residual seems to be stationary
+
+acf(ozone_sinusoid_residual)
+pacf(ozone_sinusoid_residual)
+```
+Looks like MA(1) model
+# Fitting MA(1)
+```{r}
+
+```
+# AIC, AICc, BIC
+```{r}
+auto.arima(ozone_sinusoid_residual)
+
+
+ma1_model <- sarima(ozone_sinusoid_residual, p=0, d=0, q=1, P=0, D=0, Q=0, S=0) # fit the model
+
+coeff_table <- as.data.frame(ma1_model$ttable)
+coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Estimate+1.96*SE) 
+coeff_table # show estimated coefficient and its ci
+
+
+
+# AIC, AICc, BIC
+eval<- function(model){
+  return (c(model$AIC, model$AICc,model$BIC))
+}
+evaluation = eval(ma1_model)
+
+```
+# Cross Validation
+```{r}
+years = seq(6,10,1) # from 2006 to 2010
+sse1 = c()
+differenced_year_index = year_index-4  # differenced_year_index element represent
+                                       #  index of the 200i 12 31, i = 0, 1,2,3...10
+
+for (year in years) {
+
+train_index = 1:differenced_year_index[year-1]
+test_index = (differenced_year_index[year-1]+1):differenced_year_index[year]
+
+train <- ozone_sinusoid_residual[train_index]
+test <- ozone_sinusoid_residual[test_index]
+              
+ma1_forecast <- sarima.for(train, p=0, d=0, q=1, P=0, D=0, Q=0, S=0, n.ahead=length(test_index))$pred
+
+sse1 = c(sse1,sum((ma1_forecast - test)^2))
+
+}
+
+sse1
+
+```
+
+
+
