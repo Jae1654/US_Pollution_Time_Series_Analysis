@@ -1,0 +1,64 @@
+---
+title: "Non-parametric Model"
+output: pdf_document
+date: "`r Sys.Date()`"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(forecast)
+library(astsa)
+source('cleaning.R')
+```
+
+Deciding on signal model:
+
+```{r}
+# raw
+ozone <- phoenix %>% 
+  filter(year <= 2010) %>% 
+  pull(o3)
+plot(ozone, type = 'l')
+acf(ozone)
+
+
+# yearly difference
+d365 <- diff(ozone, lag = 365)
+plot(d365, type = 'l')
+acf2(d365)
+
+
+# yearly difference + weekly difference
+d7d365 <- diff(diff(ozone, lag = 365), lag = 7)
+plot(d7d365, type = 'l')
+acf2(d7d365)
+
+
+# yearly diff + weekly diff + first diff
+d1d7d365 <- diff(diff(diff(ozone, lag = 365), lag = 7))
+plot(d1d7d365, type = 'l')
+acf2(d1d7d365)
+
+# this is the best candidate!
+```
+
+Pursuing stationarity:
+
+```{r}
+# first SARIMA that passes Ljung-Box test!!
+sarima(d365, p = 3, d = 1, q = 1, P = 1, D = 1, Q = 1, S = 7)
+
+
+# previous test
+acf2(d1d7d365)
+sarima(d365, p = 3, d = 1, q = 1, p = 0, D = 1, Q = 1, S = 7)
+```
+
+
+
+
