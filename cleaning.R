@@ -15,7 +15,8 @@ phoenix <- pollution %>%
   mutate(year = year(`Date Local`),
          month = month(`Date Local`),
          day = day(`Date Local`)) %>%
-  group_by(year, month, day) %>%
+  filter(year %in% 2004:2015) %>%
+  group_by(year, month) %>%
   summarize(no2 = mean(`NO2 Mean`),
             o3 = mean(`O3 Mean`),
             so2 = mean(`SO2 Mean`),
