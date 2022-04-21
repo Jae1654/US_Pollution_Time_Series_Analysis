@@ -54,11 +54,47 @@ Pursuing stationarity:
 sarima(d365, p = 3, d = 1, q = 1, P = 1, D = 1, Q = 1, S = 7)
 
 
-# previous test
-acf2(d1d7d365)
-sarima(d365, p = 3, d = 1, q = 1, p = 0, D = 1, Q = 1, S = 7)
+# final models
+model1 <- sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 0, Q = 2, S = 7)
+model1$AIC
+model1$AICc
+model1$BIC
+
+model2 <- sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 0, Q = 1, S = 7)
+model2$AIC
+model2$AICc
+model2$BIC
+
+
+# others
+sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 1, Q = 1, S = 7)
 ```
 
+Cross-validation:
+
+```{r}
+sse <- matrix(NA, nrow = 2, ncol = 5)  # 2006-2010
+
+# train on 2000 onwards
+for (i in 2006:2010) {
+  train <- phoenix %>% 
+    filter(year %in% 2000:(i - 1)) %>% 
+    pull(o3)
+  test <- phoenix %>% 
+    filter(year == i) %>% 
+    pull(o3)
+  
+  m1 <- sarima.for(train, n.ahead = length(test),
+                   p = 3, d = 0, q = 1, P = 1, D = 0, Q = 2, S = 7)
+  m2 <- sarima.for(train, n.ahead = length(test),
+                   p = 3, d = 0, q = 1, P = 1, D = 0, Q = 1, S = 7)
+  
+  sse[1,i-2005] <- sum((test - m1$pred)^2)
+  sse[2,i-2005] <- sum((test - m2$pred)^2)
+}
+
+rowSums(sse)
+```
 
 
 
