@@ -10,91 +10,118 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 library(forecast)
 library(astsa)
 source('cleaning.R')
 ```
 
-Deciding on signal model:
+Deciding on signal model. Ignore all commented out code.
 
 ```{r}
 # raw
-ozone <- phoenix %>% 
-  filter(year <= 2010) %>% 
+ozone <- phoenix %>%
   pull(o3)
 plot(ozone, type = 'l')
-acf(ozone)
-
+acf2(ozone)
 
 # yearly difference
-d365 <- diff(ozone, lag = 365)
-plot(d365, type = 'l')
-acf2(d365)
+d12 <- diff(ozone, lag = 12)
+plot(d12, type = 'l')
+acf2(d12)
 
 
 # yearly difference + weekly difference
-d7d365 <- diff(diff(ozone, lag = 365), lag = 7)
-plot(d7d365, type = 'l')
-acf2(d7d365)
+#d7d365 <- diff(diff(ozone, lag = 365), lag = 7)
+#plot(d7d365, type = 'l')
+#acf2(d7d365)
 
 
 # yearly diff + weekly diff + first diff
-d1d7d365 <- diff(diff(diff(ozone, lag = 365), lag = 7))
-plot(d1d7d365, type = 'l')
-acf2(d1d7d365)
+#d1d7d365 <- diff(diff(diff(ozone, lag = 365), lag = 7))
+#plot(d1d7d365, type = 'l')
+#acf2(d1d7d365)
 
 # this is the best candidate!
 ```
 
-Pursuing stationarity:
+\newpage
+
+Pursuing stationarity. These are the final non-parametric models. Once again ignored commented out code.
 
 ```{r}
-# first SARIMA that passes Ljung-Box test!!
-sarima(d365, p = 3, d = 1, q = 1, P = 1, D = 1, Q = 1, S = 7)
-
-
-# final models
-model1 <- sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 0, Q = 2, S = 7)
+# model 1: ARIMA(0,0,0)x(1,1,1)_12
+model1 <- sarima(ozone, p = 0, d = 0, q = 0, P = 1, D = 1, Q = 1, S = 12)
 model1$AIC
 model1$AICc
 model1$BIC
 
-model2 <- sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 0, Q = 1, S = 7)
+# model 2: ARIMA(0,0,0)x(0,1,1)_12
+model2 <- sarima(ozone, p = 0, d = 0, q = 0, P = 0, D = 1, Q = 1, S = 12)
 model2$AIC
 model2$AICc
 model2$BIC
 
 
+# first SARIMA that passes Ljung-Box test!!
+#sarima(d365, p = 3, d = 1, q = 1, P = 1, D = 1, Q = 1, S = 7)
+
+
+# final models
+#model1 <- sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 0, Q = 2, S = 7)
+#model1$AIC
+#model1$AICc
+#model1$BIC
+
+#model2 <- sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 0, Q = 1, S = 7)
+#model2$AIC
+#model2$AICc
+#model2$BIC
+
+# auto.arima(d365) suggested model
+#mtest <- auto.arima(d365, max.order = 7, stepwise = FALSE, approximation = FALSE, d = 0, D = 0)
+
+#acf2(d365)
+#sarima(d365, p = 3, d = 0, q = 1)
+
+
 # others
-sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 1, Q = 1, S = 7)
+#sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 1, Q = 1, S = 7)
 ```
 
-Cross-validation:
+\newpage
+
+Cross-validation. When we decide on best model out of all 4, this step should be designed the same way as the CV for the parametric models.
 
 ```{r}
-sse <- matrix(NA, nrow = 2, ncol = 5)  # 2006-2010
+sse <- matrix(NA, nrow = 2, ncol = 6)  # 2 models, test on 2010, 2011, 2012, 2013, 2014, 2015
 
-# train on 2000 onwards
-for (i in 2006:2010) {
-  train <- phoenix %>% 
-    filter(year %in% 2000:(i - 1)) %>% 
-    pull(o3)
-  test <- phoenix %>% 
-    filter(year == i) %>% 
-    pull(o3)
+# train on 2004-2009, test on 2010-2015
+for (i in 1:6) {
+  train <- ozone[1:(12 * (i + 5))]
+  test <- ozone[(12 * (i + 5) + 1):(12 * (i + 6))]
   
-  m1 <- sarima.for(train, n.ahead = length(test),
-                   p = 3, d = 0, q = 1, P = 1, D = 0, Q = 2, S = 7)
+  m1 <- sarima.for(train, n.ahead = 12,  # 30
+                   p = 0, d = 0, q = 0, P = 1, D = 1, Q = 1, S = 12)
   m2 <- sarima.for(train, n.ahead = length(test),
-                   p = 3, d = 0, q = 1, P = 1, D = 0, Q = 1, S = 7)
+                   p = 0, d = 0, q = 0, P = 0, D = 1, Q = 1, S = 12)
   
-  sse[1,i-2005] <- sum((test - m1$pred)^2)
-  sse[2,i-2005] <- sum((test - m2$pred)^2)
+  sse[1,i] <- sum((test - m1$pred)^2)
+  sse[2,i] <- sum((test - m2$pred)^2)
 }
 
-rowSums(sse)
+# final SSEs
+rowSums(sse, na.rm = TRUE)
 ```
+
+\newpage
+
+Notes from Tyler's OH (can ignore):
+
+- look at acf of residuals and qq plot as well as box test
+- x_t raw, v_t diff, v_t is the sarima
+- auto.arima search parameters, eg. order
+
 
 
 
