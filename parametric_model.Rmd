@@ -1,6 +1,8 @@
 ---
 title: "153_project"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 date: '2022-04-05'
 ---
 
@@ -12,89 +14,23 @@ library(astsa)
 source('cleaning.R')
 ```
 
-```{r}
-phoenix
-```
-
-
-# Data Preprocessing
- - Get the index of the last day of the each year
-```{r}
-
-# phoenix = phoenix %>% mutate(date = paste(year,paste(month,day,sep = "-"),sep = "-"))
-# years = seq(2000,2010,1)
-# year_index = c()
-# for (year in years){
-#   year_index = c(year_index,which(phoenix$date == paste(year,sep = "-", "12-31")))
-# }
-# 
-# phoenix[year_index,]
-# phoenix2 = phoenix
-# phoenix %>% group_by(year) %>% count()
-# 
-# phoenix2 %>% filter(year == 2000, month == 4, day == 8)
-# phoenix2 %>% add_row(year = 2000, month = 4, day = 8)
-
-```
   
 # Original data
 ```{r}
 ozone <- phoenix$o3
-ozone = ozone - mean(ozone)
+ozone = ozone - mean(ozone) # mean centered
 plot(ozone,type ="l")
 acf(ozone,lag.max = 30)
 pacf(ozone)
 ```
-The original data have clear sign of seasonality, but there seems to be no trend.
-# First difference
-```{r}
-# diff_ozone= diff(ozone)
-# plot(diff_ozone,type= "l")
-# acf(diff_ozone)
-# pacf(diff_ozone)
-```
-# Weekley difference
-```{r}
-# 
-# weekly_diff_ozone= diff(ozone, lag =7)
-# plot(weekly_diff_ozone,type= "l")
-# stats::acf(weekly_diff_ozone)
-# stats::pacf(weekly_diff_ozone)
+1. The original data have clear sign of seasonality, but there seems to be linear upward trend.
+2. The ACF PACF plot shows the strong sign of seasonality
 
-```
-# Yearly difference
+# Sinusoidal fitting
 ```{r}
-# yearly_diff_ozone= diff(ozone, lag =365)
-# plot(yearly_diff_ozone,type= "l")
-# acf(yearly_diff_ozone)
-# pacf(yearly_diff_ozone)
-# 
-# diff_yearly_diff_ozon=diff(yearly_diff_ozone)
-# plot(diff_yearly_diff_ozon,type= "l")
-# acf(diff_yearly_diff_ozon)
-# pacf(diff_yearly_diff_ozon)
-
-```
-
-# Higer order difference
-```{r}
-# diff_3_ozone= diff(diff(diff(ozone)))
-# diff_4_ozone = diff(diff(diff(diff(ozone))))
-# plot(diff_3_ozone,type = "l")
-# acf(diff_3_ozone)
-# pacf(diff_3_ozone)
-# 
-# plot(diff_4_ozone,type = "l")
-# acf(diff_4_ozone)
-# pacf(diff_4_ozone)
-```
-
-
-The ACF PACF plot shows the strong sign of seasonality
-```{r}
+t = 1:length(ozone)
 # Check the periodogram
-periodo = periodogram(ozone,plot=TRUE,ylab="Periodogram", xlab="Frequency")
-# has two peaks and many leakage
+periodo = periodogram(ozone,plot=TRUE,ylab="Periodogram", xlab="Frequency") # There is one significant peak
 
 # Get the high magnitudes in descending order
 order_spec = sort(periodo$spec,decreasing = TRUE)
@@ -105,80 +41,140 @@ first_maximizing_freq = periodo$freq[periodo$spec==first_max]
 first_sin_max = sin(2*pi*first_maximizing_freq*t)
 first_cos_max = cos(2*pi*first_maximizing_freq*t)
 
-second_max = order_spec[2]
-second_maximizing_freq = periodo$freq[periodo$spec==second_max]
-second_cos_max = cos(2*pi*second_maximizing_freq*t)
-second_sin_max = cos(2*pi*second_maximizing_freq*t)
-
-
-
 # Max Sinusoidal fitting
-t = 1:length(ozone)
 ozone_sinusoid_model = lm(ozone ~ first_sin_max*(1+t)+first_cos_max*(1+t))
-ozone_sinusoid_model$coefficients
+print(ozone_sinusoid_model$coefficients)
 
 # Overlay the sinusoidal fitting over the original plot
-# I used y = b0 + b1 * sin(t) + b2 * cos(t) + b3 * t * sin(t)+  + b4 * t * cos(t)  since there exits linear upward trend
 plot(ozone,type = "l")
 lines(t,ozone_sinusoid_model$fitted.values,col = "red")
 
 # Get the residual, hoping for removing seasonality
 ozone_sinusoid_residual = ozone_sinusoid_model$residuals
-
 plot(ozone_sinusoid_residual,type = "l") # residual seems to be stationary
 stats::acf(ozone_sinusoid_residual)
 stats::pacf(ozone_sinusoid_residual)
-
-# There exists some seasonality but the plot seems to be AR process and possible seasonal ARMA
-
 ```
+Vt = ozone
+(1+B)Vt = Xt
+(Vt - f(t)) = Xt
+$$f(t) = -0.003 + 0.000042*t - 0.0012*sin(t) -0.0123*cos(t) + 0.000002*t* sin(t) -0.000011*t*cos(t)$$ 
+
+ 1. There is one significant peak in the periodogram
+ 2. The residual plot shows some seasonality but the plot seems to be AR process and possible seasonal ARMA
 
 
-# residual fitting AIC, AICc, BIC
+
+# Residual Fitting : SARIMA(2,0,0)(1,0,1)12 
 ```{r}
-auto.arima(ozone_sinusoid_residual)
-
 model1 <- sarima(ozone_sinusoid_residual, p=2, d=0, q=0, P=1, D=0, Q=1, S=12) # fit the model
 
 coeff_table <- as.data.frame(model1$ttable)
 coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Estimate+1.96*SE) 
 coeff_table # show estimated coefficient and its ci
+```
+# Residual Fitting : SARIMA(1,0,0)(1,0,1)12 
+```{r}
+model2 <- sarima(ozone_sinusoid_residual, p=1, d=0, q=0, P=1, D=0, Q=1, S=12) # fit the model
 
+coeff_table <- as.data.frame(model2$ttable)
+coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Estimate+1.96*SE) 
+coeff_table # show estimated coefficient and its ci
+```
 
+# Residual Fitting : SARIMA(2,1,1)(1,0,1)12 
+```{r}
+model3 <- sarima(ozone_sinusoid_residual, p=2, d=1, q=1, P=1, D=0, Q=1, S=12) # fit the model
+
+coeff_table <- as.data.frame(model3$ttable)
+coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Estimate+1.96*SE) 
+coeff_table # show estimated coefficient and its ci
+```
+
+# Residual Fitting : SARIMA(2,0,1)(1,0,1)12 
+```{r}
+model4 <- sarima(ozone_sinusoid_residual, p=2, d=0, q=1, P=1, D=0, Q=1, S=12) # fit the model
+
+coeff_table <- as.data.frame(model4$ttable)
+coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Estimate+1.96*SE) 
+coeff_table # show estimated coefficient and its ci
+```
+# Evaluation Matrix
+```{r}
 # AIC, AICc, BIC
 eval<- function(model){
   return (c(model$AIC, model$AICc,model$BIC))
 }
-eval(model1)
 
+m1_evaludation = eval(model1)
+m2_evaludation = eval(model2)
+m3_evaludation = eval(model3)
+m4_evaludation = eval(model4)
 
+eval_matrix = rbind(m1_evaludation,m2_evaludation,m3_evaludation,m4_evaludation)
+rownames(eval_matrix) = c("SARIMA(2,0,0)(1,0,1)12","SARIMA(1,0,0)(1,0,1)12",
+                          "SARIMA(2,1,1)(1,0,1)12 ","SARIMA(2,0,1)(1,0,1)12 ")
+colnames(eval_matrix) = c("AIC","AICc","BIC")
+eval_matrix
 ```
+The first two models, SARIMA(2,0,0)(1,0,1)12 , SARIMA(1,0,0)(1,0,1)12 gives the lowest AIC,AICc,BIC
 
-# Cross Validation Not yet
-```{r}
-years = seq(6,10,1) # test sets from 2006 to 2010
+
+# Cross Validation 
+  Train : 2004 ~ 2011
+  Test : 2012 - 2015
+```{r, warning=FALSE}
 sse1 = c()
-differenced_year_index = year_index-4  # differenced_year_index element represent
-                                       #  index of the 200i 12 31, i = 0, 1,2,3...10
+sse2 = c()
+test_years = seq(10,15,1)
+for (year in test_years) {
 
-for (year in years) {
-
-train_index = 1:differenced_year_index[year-1]
-test_index = (differenced_year_index[year-1]+1):differenced_year_index[year]
+train_index = 1:(12*(year-4))
+test_index = (12*(year-4)+1):(12*(year-4+1))
 
 train <- ozone_sinusoid_residual[train_index]
 test <- ozone_sinusoid_residual[test_index]
-              
-ma1_forecast <- sarima.for(train, p=0, d=0, q=1, P=0, D=0, Q=0, S=0, n.ahead=10)$pred
+m1_forecast <- sarima.for(train, p=2, d=0, q=0, P=1, D=0, Q=1, S=12, n.ahead=12)$pred
+m2_forecast <- sarima.for(train, p=1, d=0, q=0, P=1, D=0, Q=1, S=12, n.ahead=12)$pred
 
-sse1 = c(sse1,sum((ma1_forecast - test)^2))
+sse1 = c(sse1,sum((m1_forecast - test)^2))
+sse2 = c(sse2,sum((m2_forecast - test)^2)) }
 
+sse = rbind(sum(sse1),sum(sse2))
+rownames(sse) = c("SARIMA(2,0,0)(1,0,1)12","SARIMA(1,0,0)(1,0,1)12")
+colnames(sse) = c("SSE")
+print(sse) 
+```
+The SSE for both model are low, but SARIMA(2,0,0)(1,0,1)12 is slighly better
+ 
+ 
+ 
+# Future 10 values prediction
+```{r}
+m1_forecast <- sarima.for(ozone_sinusoid_residual, p=2, d=0, q=0, P=1, D=0, Q=1, S=12, n.ahead=10)$pred
+
+ts = as.data.frame(145:154)
+predict_t = 145:154
+prediction = c()
+coef = ozone_sinusoid_model$coefficients
+
+for (t in predict_t){
+  pred = coef[1]+coef[2]*sin(t) + coef[3]*t+ coef[4]*cos(t)*t+ coef[5]*sin(t)*t + coef[6]*cos(t)*t
+  prediction = c(prediction,pred)
 }
 
-sse1
 
+m1_forecast = as.vector(m1_forecast)
+prediction = as.vector(prediction)
+predictions = m1_forecast+prediction
+
+ozone2 = c(ozone,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
+
+ts2 = 1:154
+preds = rep(NA, 144)
+preds = c(preds,predictions)
+
+plot(ozone2,type ="l")
+lines(ts2,preds,col = "red")
 ```
 
-
-
-we should consider the lost data point from differencing
