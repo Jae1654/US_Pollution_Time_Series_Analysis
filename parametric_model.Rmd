@@ -131,6 +131,9 @@ eval_matrix
 
 3. Overall, the first two models gives the lowest values on both (AIC,AICc,BIC) and the SSE. Hence, the best two
    parametric models are  SARIMA(2,0,0)(1,0,1)12, SARIMA(1,0,0)(1,0,1)12
+   
+4. The SSE for both model are low, but SARIMA(2,0,0)(1,0,1)12 is slighly better
+
 ```{r, warning=FALSE}
 sse1 = c()
 sse2 = c()
@@ -154,12 +157,11 @@ sse2 = c(sse2,sum((m2_forecast - test)^2))
 sse3 = c(sse3,sum((m3_forecast - test)^2)) 
 sse4 = c(sse4,sum((m4_forecast - test)^2)) 
 }
-sse = rbind(mean(sse1),mean(sse2),mean(sse3),mean(sse4))
+sse = rbind(sum(sse1),sum(sse2),sum(sse3),sum(sse4))
 rownames(sse) = c("SARIMA(2,0,0)(1,0,1)12","SARIMA(1,0,0)(1,0,1)12","SARIMA(2,1,1)(1,0,1)12","SARIMA(2,0,1)(1,0,1)12")
 colnames(sse) = c("SSE")
 print(sse) 
 ```
-The SSE for both model are low, but SARIMA(2,0,0)(1,0,1)12 is slighly better
  
  
  
