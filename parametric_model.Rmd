@@ -16,6 +16,8 @@ source('cleaning.R')
 
   
 # Original data
+1. The original data have clear sign of seasonality, but there seems to be linear upward trend.
+2. The ACF PACF plot shows the strong sign of seasonality
 ```{r}
 ozone <- phoenix$o3
 ozone = ozone - mean(ozone) # mean centered
@@ -23,10 +25,15 @@ plot(ozone,type ="l")
 acf(ozone,lag.max = 30)
 pacf(ozone)
 ```
-1. The original data have clear sign of seasonality, but there seems to be linear upward trend.
-2. The ACF PACF plot shows the strong sign of seasonality
+
 
 # Sinusoidal fitting
+Vt = ozone
+(1+B)Vt = Xt
+(Vt - f(t)) = Xt
+$$f(t) = -0.003 + 0.000042*t - 0.0012*sin(t) -0.0123*cos(t) + 0.000002*t* sin(t) -0.000011*t*cos(t)$$ 
+ 1. There is one significant peak in the periodogram
+ 2. The residual plot shows some seasonality but the plot seems to be AR process and possible seasonal ARMA
 ```{r}
 t = 1:length(ozone)
 # Check the periodogram
@@ -55,17 +62,10 @@ plot(ozone_sinusoid_residual,type = "l") # residual seems to be stationary
 stats::acf(ozone_sinusoid_residual)
 stats::pacf(ozone_sinusoid_residual)
 ```
-Vt = ozone
-(1+B)Vt = Xt
-(Vt - f(t)) = Xt
-$$f(t) = -0.003 + 0.000042*t - 0.0012*sin(t) -0.0123*cos(t) + 0.000002*t* sin(t) -0.000011*t*cos(t)$$ 
-
- 1. There is one significant peak in the periodogram
- 2. The residual plot shows some seasonality but the plot seems to be AR process and possible seasonal ARMA
 
 
 
-# Residual Fitting : SARIMA(2,0,0)(1,0,1)12 
+# Model1 : SARIMA(2,0,0)(1,0,1)12 
 ```{r}
 model1 <- sarima(ozone_sinusoid_residual, p=2, d=0, q=0, P=1, D=0, Q=1, S=12) # fit the model
 
@@ -73,7 +73,7 @@ coeff_table <- as.data.frame(model1$ttable)
 coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Estimate+1.96*SE) 
 coeff_table # show estimated coefficient and its ci
 ```
-# Residual Fitting : SARIMA(1,0,0)(1,0,1)12 
+# Model2: SARIMA(1,0,0)(1,0,1)12 
 ```{r}
 model2 <- sarima(ozone_sinusoid_residual, p=1, d=0, q=0, P=1, D=0, Q=1, S=12) # fit the model
 
@@ -82,7 +82,7 @@ coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Est
 coeff_table # show estimated coefficient and its ci
 ```
 
-# Residual Fitting : SARIMA(2,1,1)(1,0,1)12 
+# # Model3: SARIMA(2,1,1)(1,0,1)12 
 ```{r}
 model3 <- sarima(ozone_sinusoid_residual, p=2, d=1, q=1, P=1, D=0, Q=1, S=12) # fit the model
 
@@ -91,7 +91,7 @@ coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Est
 coeff_table # show estimated coefficient and its ci
 ```
 
-# Residual Fitting : SARIMA(2,0,1)(1,0,1)12 
+# # Model4: SARIMA(2,0,1)(1,0,1)12 
 ```{r}
 model4 <- sarima(ozone_sinusoid_residual, p=2, d=0, q=1, P=1, D=0, Q=1, S=12) # fit the model
 
@@ -100,6 +100,8 @@ coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Est
 coeff_table # show estimated coefficient and its ci
 ```
 # Evaluation Matrix
+1. The first two models, SARIMA(2,0,0)(1,0,1)12 , SARIMA(1,0,0)(1,0,1)12 gives the lowest AIC,AICc,BIC, hence theses
+     models are the potential best two parametric models
 ```{r}
 # AIC, AICc, BIC
 eval<- function(model){
@@ -117,15 +119,23 @@ rownames(eval_matrix) = c("SARIMA(2,0,0)(1,0,1)12","SARIMA(1,0,0)(1,0,1)12",
 colnames(eval_matrix) = c("AIC","AICc","BIC")
 eval_matrix
 ```
-The first two models, SARIMA(2,0,0)(1,0,1)12 , SARIMA(1,0,0)(1,0,1)12 gives the lowest AIC,AICc,BIC
 
 
 # Cross Validation 
+1. To determine best two models, use crovalidations and find two models that gives the lowest SSEs.
   Train : 2004 ~ 2011
   Test : 2012 - 2015
+
+
+2. The first two models  SARIMA(2,0,0)(1,0,1)12 , SARIMA(1,0,0)(1,0,1)12 gives the lowest SSEs.
+
+3. Overall, the first two models gives the lowest values on both (AIC,AICc,BIC) and the SSE. Hence, the best two
+   parametric models are  SARIMA(2,0,0)(1,0,1)12, SARIMA(1,0,0)(1,0,1)12
 ```{r, warning=FALSE}
 sse1 = c()
 sse2 = c()
+sse3 = c()
+sse4 = c()
 test_years = seq(10,15,1)
 for (year in test_years) {
 
@@ -136,12 +146,16 @@ train <- ozone_sinusoid_residual[train_index]
 test <- ozone_sinusoid_residual[test_index]
 m1_forecast <- sarima.for(train, p=2, d=0, q=0, P=1, D=0, Q=1, S=12, n.ahead=12)$pred
 m2_forecast <- sarima.for(train, p=1, d=0, q=0, P=1, D=0, Q=1, S=12, n.ahead=12)$pred
+m3_forecast <- sarima.for(train, p=2, d=1, q=1, P=1, D=0, Q=1, S=12, n.ahead=12)$pred
+m4_forecast <- sarima.for(train, p=2, d=0, q=1, P=1, D=0, Q=1, S=12, n.ahead=12)$pred
 
 sse1 = c(sse1,sum((m1_forecast - test)^2))
-sse2 = c(sse2,sum((m2_forecast - test)^2)) }
-
-sse = rbind(sum(sse1),sum(sse2))
-rownames(sse) = c("SARIMA(2,0,0)(1,0,1)12","SARIMA(1,0,0)(1,0,1)12")
+sse2 = c(sse2,sum((m2_forecast - test)^2)) 
+sse3 = c(sse3,sum((m3_forecast - test)^2)) 
+sse4 = c(sse4,sum((m4_forecast - test)^2)) 
+}
+sse = rbind(mean(sse1),mean(sse2),mean(sse3),mean(sse4))
+rownames(sse) = c("SARIMA(2,0,0)(1,0,1)12","SARIMA(1,0,0)(1,0,1)12","SARIMA(2,1,1)(1,0,1)12","SARIMA(2,0,1)(1,0,1)12")
 colnames(sse) = c("SSE")
 print(sse) 
 ```
