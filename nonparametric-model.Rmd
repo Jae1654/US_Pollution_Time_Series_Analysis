@@ -10,20 +10,20 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 library(forecast)
 library(astsa)
 source('cleaning.R')
 ```
 
-Deciding on signal model:
+Deciding on signal model. Ignore all commented out code.
 
 ```{r}
 # raw
 ozone <- phoenix %>%
   pull(o3)
 plot(ozone, type = 'l')
-acf(ozone)
+acf2(ozone)
 
 # yearly difference
 d12 <- diff(ozone, lag = 12)
@@ -45,14 +45,18 @@ acf2(d12)
 # this is the best candidate!
 ```
 
-Pursuing stationarity:
+\newpage
+
+Pursuing stationarity. These are the final non-parametric models. Once again ignored commented out code.
 
 ```{r}
+# model 1: ARIMA(0,0,0)x(1,1,1)_12
 model1 <- sarima(ozone, p = 0, d = 0, q = 0, P = 1, D = 1, Q = 1, S = 12)
 model1$AIC
 model1$AICc
 model1$BIC
 
+# model 2: ARIMA(0,0,0)x(0,1,1)_12
 model2 <- sarima(ozone, p = 0, d = 0, q = 0, P = 0, D = 1, Q = 1, S = 12)
 model2$AIC
 model2$AICc
@@ -85,10 +89,12 @@ model2$BIC
 #sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 1, Q = 1, S = 7)
 ```
 
-Cross-validation:
+\newpage
+
+Cross-validation. When we decide on best model out of all 4, this step should be designed the same way as the CV for the parametric models.
 
 ```{r}
-sse <- matrix(NA, nrow = 2, ncol = 6)  # Jan 2010 to Dec 2010
+sse <- matrix(NA, nrow = 2, ncol = 6)  # 2 models, test on 2010, 2011, 2012, 2013, 2014, 2015
 
 # train on 2004-2009, test on 2010-2015
 for (i in 1:6) {
@@ -104,13 +110,17 @@ for (i in 1:6) {
   sse[2,i] <- sum((test - m2$pred)^2)
 }
 
+# final SSEs
 rowSums(sse, na.rm = TRUE)
 ```
 
+\newpage
 
-look at acf of residuals and qq plot as well as box test
-x_t raw, v_t diff, v_t is the sarima
-auto.arima search parameters, eg. order
+Notes from Tyler's OH (can ignore):
+
+- look at acf of residuals and qq plot as well as box test
+- x_t raw, v_t diff, v_t is the sarima
+- auto.arima search parameters, eg. order
 
 
 
