@@ -159,10 +159,10 @@ prediction = c()
 coef = ozone_sinusoid_model$coefficients
 
 for (t in predict_t){
-  pred = coef[1]+coef[2]*sin(t) + coef[3]*t+ coef[4]*cos(t)*t+ coef[5]*sin(t)*t + coef[6]*cos(t)*t
+  pred = coef[1]+coef[2]*sin(t) + coef[3]*t+ coef[4]*cos(t)+ coef[5]*sin(t)*t + coef[6]*cos(t)*t
   prediction = c(prediction,pred)
 }
-
+prediction
 
 m1_forecast = as.vector(m1_forecast)
 prediction = as.vector(prediction)
