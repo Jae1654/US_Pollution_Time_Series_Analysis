@@ -16,38 +16,23 @@ library(astsa)
 source('cleaning.R')
 ```
 
-Deciding on signal model. Ignore all commented out code.
+Deciding on signal model:
 
 ```{r}
 # raw
 ozone <- phoenix %>%
   pull(o3)
 plot(ozone, type = 'l')
-acf2(ozone)
 
 # yearly difference
 d12 <- diff(ozone, lag = 12)
 plot(d12, type = 'l')
 acf2(d12)
-
-
-# yearly difference + weekly difference
-#d7d365 <- diff(diff(ozone, lag = 365), lag = 7)
-#plot(d7d365, type = 'l')
-#acf2(d7d365)
-
-
-# yearly diff + weekly diff + first diff
-#d1d7d365 <- diff(diff(diff(ozone, lag = 365), lag = 7))
-#plot(d1d7d365, type = 'l')
-#acf2(d1d7d365)
-
-# this is the best candidate!
 ```
 
 \newpage
 
-Pursuing stationarity. These are the final non-parametric models. Once again ignored commented out code.
+Pursuing stationarity; these are the final non-parametric models:
 
 ```{r}
 # model 1: ARIMA(0,0,0)x(1,1,1)_12
@@ -61,37 +46,11 @@ model2 <- sarima(ozone, p = 0, d = 0, q = 0, P = 0, D = 1, Q = 1, S = 12)
 model2$AIC
 model2$AICc
 model2$BIC
-
-
-# first SARIMA that passes Ljung-Box test!!
-#sarima(d365, p = 3, d = 1, q = 1, P = 1, D = 1, Q = 1, S = 7)
-
-
-# final models
-#model1 <- sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 0, Q = 2, S = 7)
-#model1$AIC
-#model1$AICc
-#model1$BIC
-
-#model2 <- sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 0, Q = 1, S = 7)
-#model2$AIC
-#model2$AICc
-#model2$BIC
-
-# auto.arima(d365) suggested model
-#mtest <- auto.arima(d365, max.order = 7, stepwise = FALSE, approximation = FALSE, d = 0, D = 0)
-
-#acf2(d365)
-#sarima(d365, p = 3, d = 0, q = 1)
-
-
-# others
-#sarima(d365, p = 3, d = 0, q = 1, P = 1, D = 1, Q = 1, S = 7)
 ```
 
 \newpage
 
-Cross-validation. When we decide on best model out of all 4, this step should be designed the same way as the CV for the parametric models.
+Cross-validation. When we decide on best model out of all 4, this step should be designed the same way as the CV for the parametric models:
 
 ```{r}
 sse <- matrix(NA, nrow = 2, ncol = 6)  # 2 models, test on 2010, 2011, 2012, 2013, 2014, 2015
