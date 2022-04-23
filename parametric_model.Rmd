@@ -59,13 +59,12 @@ lines(t,ozone_sinusoid_model$fitted.values,col = "red")
 # Get the residual, hoping for removing seasonality
 ozone_sinusoid_residual = ozone_sinusoid_model$residuals
 plot(ozone_sinusoid_residual,type = "l") # residual seems to be stationary
-stats::acf(ozone_sinusoid_residual)
-stats::pacf(ozone_sinusoid_residual)
+acf2(ozone_sinusoid_residual)
 ```
 
 
 
-# Model1 : SARIMA(2,0,0)(1,0,1)12 
+### Model1 : SARIMA(2,0,0)(1,0,1)12 
 ```{r}
 model1 <- sarima(ozone_sinusoid_residual, p=2, d=0, q=0, P=1, D=0, Q=1, S=12) # fit the model
 
@@ -73,7 +72,7 @@ coeff_table <- as.data.frame(model1$ttable)
 coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Estimate+1.96*SE) 
 coeff_table # show estimated coefficient and its ci
 ```
-# Model2: SARIMA(1,0,0)(1,0,1)12 
+### Model2: SARIMA(1,0,0)(1,0,1)12 
 ```{r}
 model2 <- sarima(ozone_sinusoid_residual, p=1, d=0, q=0, P=1, D=0, Q=1, S=12) # fit the model
 
@@ -82,7 +81,7 @@ coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Est
 coeff_table # show estimated coefficient and its ci
 ```
 
-# # Model3: SARIMA(2,1,1)(1,0,1)12 
+### Model3: SARIMA(2,1,1)(1,0,1)12 
 ```{r}
 model3 <- sarima(ozone_sinusoid_residual, p=2, d=1, q=1, P=1, D=0, Q=1, S=12) # fit the model
 
@@ -91,7 +90,7 @@ coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Est
 coeff_table # show estimated coefficient and its ci
 ```
 
-# # Model4: SARIMA(2,0,1)(1,0,1)12 
+### Model4: SARIMA(2,0,1)(1,0,1)12 
 ```{r}
 model4 <- sarima(ozone_sinusoid_residual, p=2, d=0, q=1, P=1, D=0, Q=1, S=12) # fit the model
 
@@ -99,6 +98,14 @@ coeff_table <- as.data.frame(model4$ttable)
 coeff_table <-coeff_table %>% mutate(ci_lower = Estimate-1.96*SE,ci_upper =  Estimate+1.96*SE) 
 coeff_table # show estimated coefficient and its ci
 ```
+# Diagnositics
+ 1. From the Standardized residual plot, all models show very stationary behavior over time. \
+ 2. From the ACF plot, we can assure the stationarity for all 4 models that sampleautocorrelation for all lags are inside of the 95% confidence interval (blue curve)
+ 3. From the Normal probability plot, all of the models satisfy the normality assumption.
+ 4. From the Ljung-Box test, all models have accept the null hypothesis that the data is from the fitted SARIMA process whcih gives strength that models have very good fit to the data.
+ 5. In conclusion the performance of the 4 models are very nice and have good fit on data. We can decide the best two models, by looking at the (AIC,AICc,BIC) and check the SSE with the Cross Validation.
+ 
+ 
 # Evaluation Matrix
 1. The first two models, SARIMA(2,0,0)(1,0,1)12 , SARIMA(1,0,0)(1,0,1)12 gives the lowest AIC,AICc,BIC, hence theses
      models are the potential best two parametric models
