@@ -192,7 +192,7 @@ prediction = as.vector(prediction)
 predictions = m1_forecast+prediction
 
 ozone2 = c(ozone,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA)
-
+prediction
 ts2 = 1:154
 preds = rep(NA, 144)
 preds = c(preds,predictions)
